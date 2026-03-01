@@ -3,16 +3,14 @@ from django.db import models
 
 
 class ProductMaster(models.Model):
-    name = models.CharField(max_length=100,blank=True, null=True)
+    name = models.CharField(max_length=100)
     stock=models.IntegerField(default=0)
     purchase_price = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3) #original price of teh product
     tax_percentage =models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3) #tax for the single item
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True, null=True)
+    modified_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
 
     class Meta:
         db_table='product_master'
@@ -28,11 +26,8 @@ class PurchaseHistory(models.Model):
     amount_paid = models.DecimalField(max_digits=10,decimal_places=3,null=True,blank=True)
     balance =models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True, null=True)
+    modified_at = models.DateTimeField(auto_now=True)
 
-
-    def __str__(self):
-        return f"{self.customer_email} - {self.created_at}"
 
     class Meta:
         db_table='purchase_history'
@@ -47,7 +42,7 @@ class PurchaseItem(models.Model):
     tax_amount = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     total_price = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True, null=True)
+    modified_at = models.DateTimeField(auto_now=True)
 
 
     class Meta:
@@ -60,11 +55,7 @@ class Denomination(models.Model):
     value = models.IntegerField(blank=True, null=True)
     available_count =models.IntegerField(blank=True,null=True,default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True, null=True)
-
-
-    def __str__(self):
-        return f"{self.value} - {self.available_count}"
+    modified_at = models.DateTimeField(auto_now=True)
 
 
     class Meta:

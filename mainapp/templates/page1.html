@@ -1,0 +1,54 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Billing Page</title>
+    <link rel="stylesheet" href="{% static 'mainapp/style.css' %}">
+</head>
+<body>
+
+<h2>Billing Page</h2>
+
+<form id="billingForm">
+
+    <!-- Customer Email -->
+    <input type="email" id="customer_email" placeholder="Email" required>
+
+    <!-- Product Rows -->
+    <div id="productContainer">
+        <div class="product-row">
+            <input type="number" class="product_id" placeholder="Product ID">
+            <input type="number" class="quantity" placeholder="Quantity">
+        </div>
+    </div>
+
+    <button type="button" onclick="addProduct()">Add New</button>
+
+    <hr>
+
+    <!-- Denominations -->
+    <h3>Denominations Given By Customer</h3>
+    <input type="number" id="d500" placeholder="500 Count">
+    <input type="number" id="d50" placeholder="50 Count">
+    <input type="number" id="d20" placeholder="20 Count">
+    <input type="number" id="d10" placeholder="10 Count">
+
+    <hr>
+
+    <!-- Total Paid -->
+    <input type="number" id="amount_paid" placeholder="Total Paid Amount">
+
+    <!-- Generate Bill Button -->
+    <button type="button" onclick="generateBill()">Generate Bill</button>
+
+    <!-- Div to display the generated bill -->
+    <div id="billDetails"></div>
+
+</form>
+
+<!-- JS Files -->
+<script src="{% static 'mainapp/page1.js' %}"></script>
+<script src="{% static 'mainapp/billing.js' %}"></script>
+
+</body>
+</html>

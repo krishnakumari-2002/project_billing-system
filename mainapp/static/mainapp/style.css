@@ -1,0 +1,32 @@
+body {
+    font-family: Arial;
+    padding: 20px;
+}
+
+.product-row {
+    margin-bottom: 10px;
+}
+
+.product-row input {
+    width: 150px;
+    margin-right: 10px;
+}
+
+.denomination-section {
+    width: 200px;
+}
+
+.denom-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.denom-row input {
+    width: 80px;
+}
+
+button {
+    padding: 6px 12px;
+    margin-top: 10px;
+}

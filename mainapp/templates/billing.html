@@ -9,26 +9,82 @@
 
 <h2>Billing Page</h2>
 
+<!-- Customer Email -->
 <label>Customer Email:</label>
-<input type="email" id="customer_email" required>
-<br><br>
-
-<h3>Products</h3>
-<div id="products_section"></div>
-<button onclick="addProductRow()">Add Product</button>
+<input type="email" id="customer_email" placeholder="Email ID" required>
 
 <br><br>
 
-<h3>Paid Denominations</h3>
-<div id="denomination_section"></div>
+<!-- Bill Section -->
+<h3>Bill Section</h3>
+
+<div id="productContainer">
+    <div class="product-row">
+        <input type="number" class="product_id" placeholder="Product ID">
+        <input type="number" class="quantity" placeholder="Quantity">
+    </div>
+</div>
+
+<button type="button" onclick="addProduct()">Add New</button>
+
+<hr>
+
+<!-- Denominations -->
+<h3>Denominations</h3>
+
+<div class="denomination-section">
+    <div class="denom-row">
+        <label>500</label>
+        <input type="number" id="d500" placeholder="Count">
+    </div>
+
+    <div class="denom-row">
+        <label>50</label>
+        <input type="number" id="d50" placeholder="Count">
+    </div>
+
+    <div class="denom-row">
+        <label>20</label>
+        <input type="number" id="d20" placeholder="Count">
+    </div>
+
+    <div class="denom-row">
+        <label>10</label>
+        <input type="number" id="d10" placeholder="Count">
+    </div>
+
+    <div class="denom-row">
+        <label>5</label>
+        <input type="number" id="d5" placeholder="Count">
+    </div>
+
+    <div class="denom-row">
+        <label>2</label>
+        <input type="number" id="d2" placeholder="Count">
+    </div>
+
+    <div class="denom-row">
+        <label>1</label>
+        <input type="number" id="d1" placeholder="Count">
+    </div>
+</div>
 
 <br>
-<label>Total Amount Paid:</label>
-<input type="number" id="amount_paid">
+
+<!-- Cash Paid -->
+<label>Cash paid by customer:</label>
+<input type="number" id="amount_paid" placeholder="Amount">
+
 <br><br>
 
-<button onclick="generateBill()">Generate Bill</button>
+<!-- Generate Bill Button -->
+<button type="button" onclick="generateBill()">Generate Bill</button>
 
+<!-- ✅ Add this div to display the generated bill -->
+<div id="billDetails"></div>
+
+<!-- JS Files -->
+<script src="{% static 'mainapp/page1.js' %}"></script>
 <script src="{% static 'mainapp/billing.js' %}"></script>
 
 </body>

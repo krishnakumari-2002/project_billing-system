@@ -5,6 +5,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from mainapp.models import ProductMaster,PurchaseHistory,PurchaseItem,Denomination
 
+from django.shortcuts import render
+
+def billing_page(request):
+    return render(request, "billing.html")
 
 
 class ProductMasterAPI(APIView):
@@ -149,11 +153,16 @@ class GenerateBillAPI(APIView):
             customer_email = data.get("customer_email")
             products = data.get("products")
             amount_paid = Decimal(data.get("amount_paid"))
-            paid_denomination = data.get("paid_denomination")  
+            paid_denomination = data.get("paid_denomination") 
+            print("amount_paid",amount_paid) 
            
             for value, count in paid_denomination.items():
+                print("value",value)
+                print("count",count)
                 denom = Denomination.objects.get(value=int(value))
+                print("d",denom)
                 denom.available_count += int(count)
+                print("denom.available_count",denom.available_count)
                 denom.save()
 
             
@@ -172,9 +181,13 @@ class GenerateBillAPI(APIView):
                     raise Exception("Insufficient stock")
 
                 quantity = item["quantity"]
+                print("quatity",quantity)
                 price = product.purchase_price
+                print("price",price)
                 tax = price * (product.tax_percentage / 100)
+                print("tax",tax)
                 total_price = (price + tax) * quantity
+                print("total_price",total_price)
 
                 total_without_tax += price * quantity
                 total_tax += tax * quantity
@@ -193,13 +206,24 @@ class GenerateBillAPI(APIView):
 
             net_total = total_without_tax + total_tax
             rounded_total = round(net_total)
+            print("round_total",rounded_total)
             balance = amount_paid - Decimal(rounded_total)
 
-            if balance < 0:
-                raise Exception("Insufficient payment")
+            balance = amount_paid - Decimal(rounded_total)
+            print("balance",balance)
 
+            # If exact amount
+            if balance == 0:
+                change_given = {}
+
+            # If extra amount
+            elif balance > 0:
+                change_given = self.calculate_change_from_db(balance)
+
+            # Safety case (optional, just in case)
+            else:
+                return Response({"status": "error", "message": "Payment is less than bill amount"},status=400)
            
-            change_given = self.calculate_change_from_db(balance)
 
             # Save totals
             purchase.total_without_tax = total_without_tax
@@ -207,22 +231,66 @@ class GenerateBillAPI(APIView):
             purchase.net_total = net_total
             purchase.rounded_total = rounded_total
             purchase.balance = balance
+            purchase.change_given = change_given
             purchase.save()
 
-            return Response({
-                "status": "success",
-                "purchase_id": purchase.id,
-                "net_total": rounded_total,
-                "balance": balance,
-                "change_given": change_given
-            }, status=201)
+            return Response({"status": "success","purchase_id": purchase.id,"net_total": rounded_total,"balance": balance,"change_given": change_given}, status=201)
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=400)
 
 
+    def get(self, request, purchase_id):
+        try:
+            purchase = PurchaseHistory.objects.get(id=purchase_id)
+            items = purchase.items.all()
 
-    
+            items_data = []
+
+            for item in items:
+                items_data.append({
+                    "product_id": item.product.id,
+                    "product_name": item.product.name,
+                    "purchase_price": item.unit_price,
+                    "quantity": item.quantity,
+                    "tax_percentage": item.product.tax_percentage,
+                    "tax_amount": item.tax_amount,
+                    "total_price": item.total_price
+                })
+
+            bill_data = {
+                "purchase_id": purchase.id,
+                "customer_email": purchase.customer_email,
+                "created_at": purchase.created_at,
+                "items": items_data,
+                "summary": {
+                    "total_without_tax": purchase.total_without_tax,
+                    "total_tax": purchase.total_tax,
+                    "net_total": purchase.net_total,
+                    "rounded_total": purchase.rounded_total,
+                    "amount_paid": purchase.amount_paid,
+                    "balance": purchase.balance
+                },
+                "change_given": purchase.change_given
+            }
+
+            return Response({
+                "status": "success",
+                "message": "Bill details fetched successfully",
+                "data": bill_data
+            }, status=status.HTTP_200_OK)
+
+        except PurchaseHistory.DoesNotExist:
+            return Response({
+                "status": "error",
+                "message": "Purchase not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 

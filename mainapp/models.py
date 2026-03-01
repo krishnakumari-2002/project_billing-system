@@ -24,6 +24,7 @@ class PurchaseHistory(models.Model):
     net_total = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     rounded_total =models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     amount_paid = models.DecimalField(max_digits=10,decimal_places=3,null=True,blank=True)
+    change_given = models.JSONField(blank=True, null=True)
     balance =models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)

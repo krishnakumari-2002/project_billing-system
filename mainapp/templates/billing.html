@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Billing Page</title>
+    <link rel="stylesheet" href="{% static 'mainapp/style.css' %}">
+</head>
+<body>
+
+<h2>Billing Page</h2>
+
+<label>Customer Email:</label>
+<input type="email" id="customer_email" required>
+<br><br>
+
+<h3>Products</h3>
+<div id="products_section"></div>
+<button onclick="addProductRow()">Add Product</button>
+
+<br><br>
+
+<h3>Paid Denominations</h3>
+<div id="denomination_section"></div>
+
+<br>
+<label>Total Amount Paid:</label>
+<input type="number" id="amount_paid">
+<br><br>
+
+<button onclick="generateBill()">Generate Bill</button>
+
+<script src="{% static 'mainapp/billing.js' %}"></script>
+
+</body>
+</html>

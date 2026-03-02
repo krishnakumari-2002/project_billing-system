@@ -79,9 +79,17 @@
 
 <!-- Generate Bill Button -->
 <button type="button" onclick="generateBill()">Generate Bill</button>
+<button type="button" onclick="view()">View History</button>
 
 <!-- ✅ Add this div to display the generated bill -->
 <div id="billDetails"></div>
+<!-- Bill Modal -->
+<div id="billModal" class="bill-modal">
+  <div class="bill-modal-content">
+    <span class="close-btn" onclick="closeBillModal()">&times;</span>
+    <div id="billModalContent"></div>
+  </div>
+</div>
 
 <!-- JS Files -->
 <script src="{% static 'mainapp/page1.js' %}"></script>

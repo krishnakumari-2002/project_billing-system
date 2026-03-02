@@ -5,7 +5,7 @@ from django.db import models
 class ProductMaster(models.Model):
     name = models.CharField(max_length=100)
     stock=models.IntegerField(default=0)
-    purchase_price = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3) #original price of teh product
+    unit_price = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3) #original price of teh product
     tax_percentage =models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3) #tax for the single item
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -24,7 +24,7 @@ class PurchaseHistory(models.Model):
     net_total = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     rounded_total =models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     amount_paid = models.DecimalField(max_digits=10,decimal_places=3,null=True,blank=True)
-    change_given = models.JSONField(blank=True, null=True)
+    change_given = models.JSONField(default=dict)
     balance =models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
@@ -39,7 +39,7 @@ class PurchaseItem(models.Model):
     purchase = models.ForeignKey(PurchaseHistory, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(ProductMaster, on_delete=models.CASCADE)
     quantity = models.IntegerField(default=0)
-    unit_price = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3) #selling price
+    purchase_price = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3) #selling price
     tax_amount = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     total_price = models.DecimalField(max_digits=10,blank=True,null=True,decimal_places=3)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1,4 +1,3 @@
-// page1.js
 function addProduct() {
     const div = document.createElement("div");
     div.classList.add("product-row");
@@ -6,7 +5,7 @@ function addProduct() {
     div.innerHTML = `
         <input type="number" class="product_id" placeholder="Product ID">
         <input type="number" class="quantity" placeholder="Quantity">
-        <button type="button" onclick="this.parentElement.remove()">Remove</button>
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">Remove</button>
     `;
 
     document.getElementById("productContainer").appendChild(div);

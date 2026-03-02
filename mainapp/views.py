@@ -1,11 +1,15 @@
-from django.db import transaction
+import tempfile
 from decimal import Decimal
+from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from mainapp.models import ProductMaster,PurchaseHistory,PurchaseItem,Denomination
-
+from mainapp.models import ProductMaster, PurchaseHistory, PurchaseItem, Denomination
+from mainapp.tasks import send_bill_email
+from mainapp.utils import generate_bill_pdf 
 from django.shortcuts import render
+
+
 
 def billing_page(request):
     return render(request, "billing.html")
@@ -114,30 +118,23 @@ class ProductMasterAPI(APIView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class GenerateBillAPI(APIView):
 
-
     def calculate_change_from_db(self, balance):
-
         change = {}
         remaining = balance
 
         denominations = Denomination.objects.filter(available_count__gt=0).order_by("-value")
 
         for denom in denominations:
-
             if remaining <= 0:
                 break
 
             max_needed = remaining // denom.value
             if max_needed > 0:
-
                 usable_count = min(max_needed, denom.available_count)
-
                 if usable_count > 0:
                     change[denom.value] = int(usable_count)
-
                     remaining -= denom.value * usable_count
                     denom.available_count -= usable_count
                     denom.save()
@@ -153,19 +150,13 @@ class GenerateBillAPI(APIView):
             customer_email = data.get("customer_email")
             products = data.get("products")
             amount_paid = Decimal(data.get("amount_paid"))
-            paid_denomination = data.get("paid_denomination") 
-            print("amount_paid",amount_paid) 
-           
+            paid_denomination = data.get("paid_denomination")
+
             for value, count in paid_denomination.items():
-                print("value",value)
-                print("count",count)
                 denom = Denomination.objects.get(value=int(value))
-                print("d",denom)
                 denom.available_count += int(count)
-                print("denom.available_count",denom.available_count)
                 denom.save()
 
-            
             total_without_tax = Decimal(0)
             total_tax = Decimal(0)
 
@@ -173,21 +164,18 @@ class GenerateBillAPI(APIView):
                 customer_email=customer_email,
                 amount_paid=amount_paid
             )
+            
 
             for item in products:
                 product = ProductMaster.objects.get(id=item["product_id"])
 
                 if product.stock < item["quantity"]:
-                    raise Exception("Insufficient stock")
+                    raise Exception(f"Insufficient stock for product {product.name}")
 
                 quantity = item["quantity"]
-                print("quatity",quantity)
-                price = product.purchase_price
-                print("price",price)
+                price = product.unit_price
                 tax = price * (product.tax_percentage / 100)
-                print("tax",tax)
                 total_price = (price + tax) * quantity
-                print("total_price",total_price)
 
                 total_without_tax += price * quantity
                 total_tax += tax * quantity
@@ -196,36 +184,27 @@ class GenerateBillAPI(APIView):
                     purchase=purchase,
                     product=product,
                     quantity=quantity,
-                    unit_price=price,
+                    purchase_price=total_without_tax,
                     tax_amount=tax,
                     total_price=total_price
                 )
 
+                
                 product.stock -= quantity
                 product.save()
 
+           
             net_total = total_without_tax + total_tax
             rounded_total = round(net_total)
-            print("round_total",rounded_total)
             balance = amount_paid - Decimal(rounded_total)
 
-            balance = amount_paid - Decimal(rounded_total)
-            print("balance",balance)
-
-            # If exact amount
             if balance == 0:
                 change_given = {}
-
-            # If extra amount
             elif balance > 0:
                 change_given = self.calculate_change_from_db(balance)
-
-            # Safety case (optional, just in case)
             else:
                 return Response({"status": "error", "message": "Payment is less than bill amount"},status=400)
-           
 
-            # Save totals
             purchase.total_without_tax = total_without_tax
             purchase.total_tax = total_tax
             purchase.net_total = net_total
@@ -234,65 +213,70 @@ class GenerateBillAPI(APIView):
             purchase.change_given = change_given
             purchase.save()
 
+            try:
+                tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                generate_bill_pdf(purchase, tmp_file.name)
+                tmp_file_path = tmp_file.name
+                tmp_file.close()
+            except Exception as e:
+                return Response({"status": "error", "message": f"PDF generation failed: {e}"}, status=400)
+
+           
+            send_bill_email.delay(
+                customer_email,
+                subject="Your Purchase Bill",
+                message=f"Dear Customer, your bill total is {rounded_total}. Please see the attached PDF.",
+                attachment_path=tmp_file_path
+            )
+
             return Response({"status": "success","purchase_id": purchase.id,"net_total": rounded_total,"balance": balance,"change_given": change_given}, status=201)
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=400)
 
 
+class BillDetailsAPIView(APIView):
+
     def get(self, request, purchase_id):
         try:
             purchase = PurchaseHistory.objects.get(id=purchase_id)
-            items = purchase.items.all()
-
             items_data = []
 
-            for item in items:
+            for item in purchase.items.all():  
                 items_data.append({
                     "product_id": item.product.id,
                     "product_name": item.product.name,
-                    "purchase_price": item.unit_price,
+                    "unit_price": float(item.product.unit_price or 0),     
                     "quantity": item.quantity,
-                    "tax_percentage": item.product.tax_percentage,
-                    "tax_amount": item.tax_amount,
-                    "total_price": item.total_price
+                    "purchase_price": float(item.purchase_price or 0),      
+                    "tax_percentage": float(item.product.tax_percentage or 0),  
+                    "tax_amount": float(item.tax_amount or 0),              
+                    "total_price": float(item.total_price or 0)             
                 })
+
+            change_dict = {str(k): int(v) for k, v in (purchase.change_given or {}).items()}
 
             bill_data = {
                 "purchase_id": purchase.id,
                 "customer_email": purchase.customer_email,
-                "created_at": purchase.created_at,
                 "items": items_data,
                 "summary": {
-                    "total_without_tax": purchase.total_without_tax,
-                    "total_tax": purchase.total_tax,
-                    "net_total": purchase.net_total,
-                    "rounded_total": purchase.rounded_total,
-                    "amount_paid": purchase.amount_paid,
-                    "balance": purchase.balance
+                    "total_without_tax": float(purchase.total_without_tax or 0),
+                    "total_tax": float(purchase.total_tax or 0),
+                    "net_total": float(purchase.net_total or 0),
+                    "rounded_total": float(purchase.rounded_total or 0),
+                    "amount_paid": float(purchase.amount_paid or 0),
+                    "balance": float(purchase.balance or 0)
                 },
-                "change_given": purchase.change_given
+                "change_given": change_dict
             }
 
-            return Response({
-                "status": "success",
-                "message": "Bill details fetched successfully",
-                "data": bill_data
-            }, status=status.HTTP_200_OK)
+            return Response({"status": "success","message": "Bill details fetched successfully","data": bill_data})
 
         except PurchaseHistory.DoesNotExist:
-            return Response({
-                "status": "error",
-                "message": "Purchase not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-
+            return Response({"status": "error", "message": "Purchase not found"}, status=404)
         except Exception as e:
-            return Response({
-                "status": "error",
-                "message": str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-
+            return Response({"status": "error", "message": str(e)}, status=400)
 
 
 class PurchaseHistoryListAPI(APIView):
@@ -300,7 +284,6 @@ class PurchaseHistoryListAPI(APIView):
     def get(self, request):
         try:
             email = request.GET.get("email")
-
             purchases = PurchaseHistory.objects.filter(customer_email=email)
 
             data = [{
@@ -313,6 +296,7 @@ class PurchaseHistoryListAPI(APIView):
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=400)
+
 
 class DenominationAPI(APIView):
 
